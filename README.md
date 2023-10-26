@@ -38,6 +38,14 @@ DCTV가 사람이 쓰러진 후 10초가 지나도 일어나지 않는 상황을
 상황가정2 : 길에 쓰러져 있는 사람
 
 
+<h2>Grounding-Dion</h2>
+Knife Detecting : 칼을 검출하기 위해 Grounding-Dino 모듈을 사용합니다
+
+<h2>openpifpaf</h2>
+Fall-Detecting : 쓰러짐을 예측하기 위해 openpifpaf 라이브러리와 LSTM(Long Short-Memory) 모델을 사용합니다.
+
+
+
 
 
 
