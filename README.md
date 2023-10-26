@@ -34,11 +34,12 @@ DCTV가 사람이 쓰러진 후 10초가 지나도 일어나지 않는 상황을
 ![새벽 도로에 누워있던 30대](https://github.com/ST-Sinu/DCTV/assets/100664052/565f6395-b63d-4baa-88f7-146664960ec5)
 ![술 취해 쓰러진 50대](https://github.com/ST-Sinu/DCTV/assets/100664052/0614e2f1-d79d-4286-a36d-c507e8f9ac08)
 
-상황가정1 : 흉기를 들고 배회하는 사람
-상황가정2 : 길에 쓰러져 있는 사람
+<h2>상황가정1 : 흉기를 들고 배회하는 사람</h2> 
+
+<h2>상황가정2 : 길에 쓰러져 있는 사람</h2>
 
 
-<h2>Grounding-Dion</h2>
+<h2>Grounding-Dino</h2>
 Knife Detecting : 칼을 검출하기 위해 Grounding-Dino 모듈을 사용합니다
 
 <h2>openpifpaf</h2>
