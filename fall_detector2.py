@@ -6,13 +6,10 @@ import logging
 import torch.multiprocessing as mp
 import csv
 from default_params import *
-from algorithms import *
+from algorithms2 import *
 from helpers import last_ip
 import os
 import matplotlib.pyplot as plt
-import djitellopy as tello
-import threading
-import keyboard_controller as kc
 
 try:
     mp.set_start_method('spawn')
@@ -88,79 +85,66 @@ class FallDetector:
 
         return args
 
-    def begin(self,drone):
+    def begin(self):
         print('Starting...')
         e = mp.Event()
         queues = [mp.Queue() for _ in range(self.args.num_cams)]
         counter1 = mp.Value('i', 0)
         counter2 = mp.Value('i', 0)
         argss = [copy.deepcopy(self.args) for _ in range(self.args.num_cams)]
-        print("args OK")
-        # if self.args.num_cams == 1:
-        #     if self.args.video is None:
-        #         argss[0].video = 0
-        process1 = mp.Process(target=extract_keypoints_parallel,
-                                  args=(queues[0], argss[0], counter1, counter2, self.consecutive_frames, e,drone))
-        print("process make OK")
-        process1.start()
-        print("process1 start OK")
-        #extract_keypoints_parallel(queues[0], argss[0], counter1, counter2, self.consecutive_frames, e,drone_img)
-        if self.args.coco_points:
+        if self.args.num_cams == 1:
+            if self.args.video is None:
+                argss[0].video = 0
+            process1 = mp.Process(target=extract_keypoints_parallel,
+                                  args=(queues[0], argss[0], counter1, counter2, self.consecutive_frames, e))
+            process1.start()
+            if self.args.coco_points:
+                process1.join()
+            else:
+                process2 = mp.Process(target=alg2_sequential, args=(queues, argss,
+                                                                    self.consecutive_frames, e))
+                process2.start()
             process1.join()
+        elif self.args.num_cams == 2:
+            if self.args.video is None:
+                argss[0].video = 0
+                argss[1].video = 1
+            else:
+                try:
+                    vid_name = self.args.video.split('.')
+                    argss[0].video = ''.join(vid_name[:-1])+'1.'+vid_name[-1]
+                    argss[1].video = ''.join(vid_name[:-1])+'2.'+vid_name[-1]
+                    print('Video 1:', argss[0].video)
+                    print('Video 2:', argss[1].video)
+                except Exception as exep:
+                    print('Error: argument --video not properly set')
+                    print('For 2 video fall detection(--num_cams=2), save your videos as abc1.xyz & abc2.xyz and set --video=abc.xyz')
+                    return
+            process1_1 = mp.Process(target=extract_keypoints_parallel,
+                                    args=(queues[0], argss[0], counter1, counter2, self.consecutive_frames, e))
+            process1_2 = mp.Process(target=extract_keypoints_parallel,
+                                    args=(queues[1], argss[1], counter2, counter1, self.consecutive_frames, e))
+            process1_1.start()
+            process1_2.start()
+            if self.args.coco_points:
+                process1_1.join()
+                process1_2.join()
+            else:
+                process2 = mp.Process(target=alg2_sequential, args=(queues, argss,
+                                                                    self.consecutive_frames, e))
+                process2.start()
+            process1_1.join()
+            process1_2.join()
         else:
-            process2 = mp.Process(target=alg2_sequential, args=(queues, argss, self.consecutive_frames, e))
-            process2.start()
-            
+            print('More than 2 cameras are currently not supported')
+            return
+
         if not self.args.coco_points:
             process2.join()
-        #result_img = alg2_sequential(queues, argss, self.consecutive_frames, e)
-        # if self.args.num_cams == 2:
-        #     if self.args.video is None:
-        #         argss[0].video = 0
-
-        #         argss[1].video = 1
-        #     else:
-        #         try:
-        #             vid_name = self.args.video.split('.')
-        #             argss[0].video = ''.join(vid_name[:-1])+'1.'+vid_name[-1]
-        #             argss[1].video = ''.join(vid_name[:-1])+'2.'+vid_name[-1]
-        #             print('Video 1:', argss[0].video)
-        #             print('Video 2:', argss[1].video)
-        #         except Exception as exep:
-        #             print('Error: argument --video not properly set')
-        #             print('For 2 video fall detection(--num_cams=2), save your videos as abc1.xyz & abc2.xyz and set --video=abc.xyz')
-        #             return
-        #     process1_1 = mp.Process(target=extract_keypoints_parallel,
-        #                             args=(queues[0], argss[0], counter1, counter2, self.consecutive_frames, e))
-        #     process1_2 = mp.Process(target=extract_keypoints_parallel,
-        #                             args=(queues[1], argss[1], counter2, counter1, self.consecutive_frames, e))
-        #     process1_1.start()
-        #     process1_2.start()
-        #     if self.args.coco_points:
-        #         process1_1.join()
-        #         process1_2.join()
-        #     else:
-        #         process2 = mp.Process(target=alg2_sequential, args=(queues, argss,
-        #                                                             self.consecutive_frames, e))
-        #         process2.start()
-        #     process1_1.join()
-        #     process1_2.join()
-        # else:
-        #     print('More than 2 cameras are currently not supported')
-        #     return
-        # if not self.args.coco_points:
-        #     process2.join()
         print('Exiting...')
-        return #result_img
+        return
 
-def tello_control(key, keyboard_controller):
-    keyboard_controller.control(key)
 
 if __name__ == "__main__":
     f = FallDetector()
-    drone = tello.Tello()
-    drone.connect()
-    drone.streamon()
-    keyboard_controller2 = kc.TelloKeyboardController(drone)
-    f.begin(drone)
-
+    f.begin()

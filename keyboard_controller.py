@@ -1,8 +1,9 @@
 from djitellopy import Tello
 
 class TelloKeyboardController:
-    def __init__(self, drone: Tello):
+    def __init__(self, drone: Tello, in_flight = False):
         self.tello = drone
+        self.in_flight = in_flight
 
     def control(self, key):
         if key == ord('w'):
@@ -22,3 +23,16 @@ class TelloKeyboardController:
             self.tello.move_up(20)
         elif key == ord('f'):
             self.tello.move_down(20)
+        elif key == ord(' '):
+            if not self.in_flight:
+                # Take-off drone
+                self.tello.takeoff()
+                self.in_flight = True
+            elif self.in_flight:
+                # Land tello 
+                self.tello.land()
+                self.in_flight = False
+        elif key == 27: #esc
+            self.tello.end()
+        elif key == ord('p'):
+            self.tello.send_rc_control(0, 0, 0, 0)

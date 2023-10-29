@@ -18,7 +18,6 @@ import math
 import djitellopy as tello
 import winsound as sd
 
-
 def resize(img, resize, resolution):
     # Resize the video
     if resize is None:
@@ -30,25 +29,20 @@ def resize(img, resize, resolution):
     return width, height, width_height
 
 
+def extract_keypoints_parallel(queue, args, self_counter, other_counter, consecutive_frames, event, drone):
+    try:
+        tagged_df = None
+        cam = drone
+        img = cam.get_frame_read().frame
+    except Exception as e:
+        queue.put(None)
+        event.set()
+        print('Exception occurred:', e)
+        print('Most likely that the video/camera doesn\'t exist')
+        return
 
-def extract_keypoints_parallel(queue, args, self_counter, other_counter, consecutive_frames, event,drone):
-    #try:
-    tagged_df = None
-    img = drone.get_frame_read().frame
-    if drone.background_frame_read:
-        print("imgOK")
-    # except Exception as e:
-    #     queue.put(None)
-    #     event.set()
-    #     print('Exception occurred:', e)
-    #     print('Most likely that the video/camera doesn\'t exist')
-    #     return
-
-    #width, height, width_height = 1280, 720, (1280,720)
-    # resize(img, args.resize, args.resolution) #변수값 직접 지정하기
-    # logging.debug(f'Target width and height = {width_height}')
-    # processor_singleton = Processor(width_height, args)
-    width, height, width_height = resize(img, args.resize, args.resolution)
+    width, height, width_height = 1280, 720, (1280,720)
+    #resize(img, args.resize, args.resolution) #변수값 직접 지정하기
     logging.debug(f'Target width and height = {width_height}')
     processor_singleton = Processor(width_height, args)
 
@@ -63,7 +57,7 @@ def extract_keypoints_parallel(queue, args, self_counter, other_counter, consecu
             continue
 
         # ret_val, 
-        img = drone.get_frame_read().frame
+        img = cam.get_frame_read().frame
         frame += 1
         self_counter.value += 1
         if tagged_df is None:
@@ -233,7 +227,7 @@ def match_unmatched(unmatched_1, unmatched_2, lstm_set1, lstm_set2, num_matched)
 def alg2_sequential(queues, argss, consecutive_frames, event):
     fall_count = 0
     model = LSTMModel(h_RNN=48, h_RNN_layers=2, drop_p=0.1, num_classes=7)
-    model.load_state_dict(torch.load('C:/Users/user/anaconda3/envs/newtest/HumanFallDetection/model/lstm_weights.sav',map_location=argss[0].device))
+    model.load_state_dict(torch.load('./model/lstm_weights.sav',map_location=argss[0].device))
     model.eval()
     output_videos = [None for _ in range(1)]
     t0 = time.time()
@@ -276,94 +270,93 @@ def alg2_sequential(queues, argss, consecutive_frames, event):
                 else:
                     fall_count = 0
                 img, output_videos[0] = show_tracked_img(dict_frames[0], ip_sets[0], num_matched, output_videos[0], argss[0])
-                #print(img1.shape)
-                cv2.imshow("fall",img)
-                return img
+                # print(img1.shape)
+                cv2.imshow(window_names[0], img)
 
-            # elif argss[0].num_cams == 2:
-            #     num_matched, new_num, indxs_unmatched1 = match_ip(ip_sets[0], kp_frames[0], lstm_sets[0], num_matched, max_length_mat)
-            #     assert(new_num == len(ip_sets[0]))
-            #     for i in sorted(indxs_unmatched1, reverse=True):
-            #         elem = ip_sets[1][i]
-            #         ip_sets[1].pop(i)
-            #         ip_sets[1].append(elem)
-            #         elem_lstm = lstm_sets[1][i]
-            #         lstm_sets[1].pop(i)
-            #         lstm_sets[1].append(elem_lstm)
-            #     num_matched, new_num, indxs_unmatched2 = match_ip(ip_sets[1], kp_frames[1], lstm_sets[1], num_matched, max_length_mat)
+            elif argss[0].num_cams == 2:
+                num_matched, new_num, indxs_unmatched1 = match_ip(ip_sets[0], kp_frames[0], lstm_sets[0], num_matched, max_length_mat)
+                assert(new_num == len(ip_sets[0]))
+                for i in sorted(indxs_unmatched1, reverse=True):
+                    elem = ip_sets[1][i]
+                    ip_sets[1].pop(i)
+                    ip_sets[1].append(elem)
+                    elem_lstm = lstm_sets[1][i]
+                    lstm_sets[1].pop(i)
+                    lstm_sets[1].append(elem_lstm)
+                num_matched, new_num, indxs_unmatched2 = match_ip(ip_sets[1], kp_frames[1], lstm_sets[1], num_matched, max_length_mat)
 
-            #     for i in sorted(indxs_unmatched2, reverse=True):
-            #         elem = ip_sets[0][i]
-            #         ip_sets[0].pop(i)
-            #         ip_sets[0].append(elem)
-            #         elem_lstm = lstm_sets[0][i]
-            #         lstm_sets[0].pop(i)
-            #         lstm_sets[0].append(elem_lstm)
+                for i in sorted(indxs_unmatched2, reverse=True):
+                    elem = ip_sets[0][i]
+                    ip_sets[0].pop(i)
+                    ip_sets[0].append(elem)
+                    elem_lstm = lstm_sets[0][i]
+                    lstm_sets[0].pop(i)
+                    lstm_sets[0].append(elem_lstm)
 
-            #     matched_1 = ip_sets[0][:num_matched]
-            #     matched_2 = ip_sets[1][:num_matched]
+                matched_1 = ip_sets[0][:num_matched]
+                matched_2 = ip_sets[1][:num_matched]
 
-            #     unmatch_previous = remove_wrongly_matched(matched_1, matched_2)
-            #     if unmatch_previous:
-            #         print(unmatch_previous)
+                unmatch_previous = remove_wrongly_matched(matched_1, matched_2)
+                if unmatch_previous:
+                    print(unmatch_previous)
 
-            #     for i in sorted(unmatch_previous, reverse=True):
-            #         elem1 = ip_sets[0][i]
-            #         elem2 = ip_sets[1][i]
-            #         ip_sets[0].pop(i)
-            #         ip_sets[1].pop(i)
-            #         ip_sets[0].append(elem1)
-            #         ip_sets[1].append(elem2)
-            #         elem_lstm1 = lstm_sets[0][i]
-            #         lstm_sets[0].pop(i)
-            #         lstm_sets[0].append(elem_lstm1)
-            #         elem_lstm2 = lstm_sets[1][i]
-            #         lstm_sets[1].pop(i)
-            #         lstm_sets[1].append(elem_lstm2)
-            #         num_matched -= 1
+                for i in sorted(unmatch_previous, reverse=True):
+                    elem1 = ip_sets[0][i]
+                    elem2 = ip_sets[1][i]
+                    ip_sets[0].pop(i)
+                    ip_sets[1].pop(i)
+                    ip_sets[0].append(elem1)
+                    ip_sets[1].append(elem2)
+                    elem_lstm1 = lstm_sets[0][i]
+                    lstm_sets[0].pop(i)
+                    lstm_sets[0].append(elem_lstm1)
+                    elem_lstm2 = lstm_sets[1][i]
+                    lstm_sets[1].pop(i)
+                    lstm_sets[1].append(elem_lstm2)
+                    num_matched -= 1
 
-            #     unmatched_1 = ip_sets[0][num_matched:]
-            #     unmatched_2 = ip_sets[1][num_matched:]
+                unmatched_1 = ip_sets[0][num_matched:]
+                unmatched_2 = ip_sets[1][num_matched:]
 
-            #     new_pairs, new_matched1, new_matched2, new_lstm1, new_lstm2 = match_unmatched(
-            #         unmatched_1, unmatched_2, lstm_sets[0], lstm_sets[1], num_matched)
+                new_pairs, new_matched1, new_matched2, new_lstm1, new_lstm2 = match_unmatched(
+                    unmatched_1, unmatched_2, lstm_sets[0], lstm_sets[1], num_matched)
 
-            #     new_p1 = new_pairs[0]
-            #     new_p2 = new_pairs[1]
+                new_p1 = new_pairs[0]
+                new_p2 = new_pairs[1]
 
-            #     for i in sorted(new_p1, reverse=True):
-            #         ip_sets[0].pop(i)
-            #         lstm_sets[0].pop(i)
-            #     for i in sorted(new_p2, reverse=True):
-            #         ip_sets[1].pop(i)
-            #         lstm_sets[1].pop(i)
+                for i in sorted(new_p1, reverse=True):
+                    ip_sets[0].pop(i)
+                    lstm_sets[0].pop(i)
+                for i in sorted(new_p2, reverse=True):
+                    ip_sets[1].pop(i)
+                    lstm_sets[1].pop(i)
 
-            #     ip_sets[0] = ip_sets[0][:num_matched] + new_matched1 + ip_sets[0][num_matched:]
-            #     ip_sets[1] = ip_sets[1][:num_matched] + new_matched2 + ip_sets[1][num_matched:]
-            #     lstm_sets[0] = lstm_sets[0][:num_matched] + new_lstm1 + lstm_sets[0][num_matched:]
-            #     lstm_sets[1] = lstm_sets[1][:num_matched] + new_lstm2 + lstm_sets[1][num_matched:]
-            #     # remember to match the energy matrices also
+                ip_sets[0] = ip_sets[0][:num_matched] + new_matched1 + ip_sets[0][num_matched:]
+                ip_sets[1] = ip_sets[1][:num_matched] + new_matched2 + ip_sets[1][num_matched:]
+                lstm_sets[0] = lstm_sets[0][:num_matched] + new_lstm1 + lstm_sets[0][num_matched:]
+                lstm_sets[1] = lstm_sets[1][:num_matched] + new_lstm2 + lstm_sets[1][num_matched:]
+                # remember to match the energy matrices also
 
-            #     num_matched = num_matched + len(new_matched1)
+                num_matched = num_matched + len(new_matched1)
 
-            #     # get features now
+                # get features now
 
-            #     valid1_idxs, prediction1 = get_all_features(ip_sets[0], lstm_sets[0], model)
-            #     valid2_idxs, prediction2 = get_all_features(ip_sets[1], lstm_sets[1], model)
-            #     dict_frames[0]["tagged_df"]["text"] += f" Pred: {activity_dict[prediction1+5]}"
-            #     dict_frames[1]["tagged_df"]["text"] += f" Pred: {activity_dict[prediction2+5]}"
-            #     img1, output_videos[0] = show_tracked_img(dict_frames[0], ip_sets[0], num_matched, output_videos[0], argss[0])
-            #     img2, output_videos[1] = show_tracked_img(dict_frames[1], ip_sets[1], num_matched, output_videos[1], argss[1])
-            #     # print(img1.shape)
-            #     img1 = np.array(img1)
-            #     img2 = np.array(img2)
-            #     img1 = img1[:,:,::-1]
-            #     img2 = img2[:,:,::-1]
-            #     cv2.imshow(window_names[0], img1)
-            #     cv2.imshow(window_names[1], img2)
+                valid1_idxs, prediction1 = get_all_features(ip_sets[0], lstm_sets[0], model)
+                valid2_idxs, prediction2 = get_all_features(ip_sets[1], lstm_sets[1], model)
+                dict_frames[0]["tagged_df"]["text"] += f" Pred: {activity_dict[prediction1+5]}"
+                dict_frames[1]["tagged_df"]["text"] += f" Pred: {activity_dict[prediction2+5]}"
+                img1, output_videos[0] = show_tracked_img(dict_frames[0], ip_sets[0], num_matched, output_videos[0], argss[0])
+                img2, output_videos[1] = show_tracked_img(dict_frames[1], ip_sets[1], num_matched, output_videos[1], argss[1])
+                # print(img1.shape)
+                img1 = np.array(img1)
+                img2 = np.array(img2)
+                img1 = img1[:,:,::-1]
+                img2 = img2[:,:,::-1]
+                cv2.imshow(window_names[0], img1)
+                cv2.imshow(window_names[1], img2)
 
-            #     assert(len(lstm_sets[0]) == len(ip_sets[0]))
-            #     assert(len(lstm_sets[1]) == len(ip_sets[1]))
+                assert(len(lstm_sets[0]) == len(ip_sets[0]))
+                assert(len(lstm_sets[1]) == len(ip_sets[1]))
 
             DEBUG = False
             # for ip_set, feature_plotter in zip(ip_sets, feature_plotters):
@@ -506,42 +499,42 @@ def get_frame_features(ip_set, new_frame, re_matrix, gf_matrix, num_matched, max
 
     match_ip(ip_set, new_frame, re_matrix, gf_matrix, max_length_mat)
     return
-    # for i in range(len(ip_set)):
-    #     if ip_set[i][-1] is not None:
-    #         if ip_set[i][-2] is not None:
-    #             pop_and_add(re_matrix[i], get_rot_energy(
-    #                         ip_set[i][-2], ip_set[i][-1]), max_length_mat)
-    #         elif ip_set[i][-3] is not None:
-    #             pop_and_add(re_matrix[i], get_rot_energy(
-    #                         ip_set[i][-3], ip_set[i][-1]), max_length_mat)
-    #         elif ip_set[i][-4] is not None:
-    #             pop_and_add(re_matrix[i], get_rot_energy(
-    #                         ip_set[i][-4], ip_set[i][-1]), max_length_mat)
-    #         else:
-    #             pop_and_add(re_matrix[i], 0, max_length_mat)
-    #     else:
-    #         pop_and_add(re_matrix[i], 0, max_length_mat)
+    for i in range(len(ip_set)):
+        if ip_set[i][-1] is not None:
+            if ip_set[i][-2] is not None:
+                pop_and_add(re_matrix[i], get_rot_energy(
+                            ip_set[i][-2], ip_set[i][-1]), max_length_mat)
+            elif ip_set[i][-3] is not None:
+                pop_and_add(re_matrix[i], get_rot_energy(
+                            ip_set[i][-3], ip_set[i][-1]), max_length_mat)
+            elif ip_set[i][-4] is not None:
+                pop_and_add(re_matrix[i], get_rot_energy(
+                            ip_set[i][-4], ip_set[i][-1]), max_length_mat)
+            else:
+                pop_and_add(re_matrix[i], 0, max_length_mat)
+        else:
+            pop_and_add(re_matrix[i], 0, max_length_mat)
 
-    # for i in range(len(ip_set)):
-    #     if ip_set[i][-1] is not None:
-    #         last1 = None
-    #         last2 = None
-    #         for j in [-2, -3, -4, -5]:
-    #             if ip_set[i][j] is not None:
-    #                 if last1 is None:
-    #                     last1 = j
-    #                 elif last2 is None:
-    #                     last2 = j
+    for i in range(len(ip_set)):
+        if ip_set[i][-1] is not None:
+            last1 = None
+            last2 = None
+            for j in [-2, -3, -4, -5]:
+                if ip_set[i][j] is not None:
+                    if last1 is None:
+                        last1 = j
+                    elif last2 is None:
+                        last2 = j
 
-    #         if last2 is None:
-    #             pop_and_add(gf_matrix[i], 0, max_length_mat)
-    #             continue
+            if last2 is None:
+                pop_and_add(gf_matrix[i], 0, max_length_mat)
+                continue
 
-    #         pop_and_add(gf_matrix[i], get_gf(ip_set[i][last2], ip_set[i][last1],
-    #                                          ip_set[i][-1]), max_length_mat)
+            pop_and_add(gf_matrix[i], get_gf(ip_set[i][last2], ip_set[i][last1],
+                                             ip_set[i][-1]), max_length_mat)
 
-    #     else:
+        else:
 
-    #         pop_and_add(gf_matrix[i], 0, max_length_mat)
+            pop_and_add(gf_matrix[i], 0, max_length_mat)
 
-    # return
+    return

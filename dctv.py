@@ -10,64 +10,42 @@ import threading
 def tello_control(key, keyboard_controller):
     keyboard_controller.control(key)
 
-            
-# def getInput():
-#     left_right, front_back, up_down, clock_counter = 0, 0, 0, 0
+def drone_connect(drone):
+    connection = False
+    try:
+        drone.connect()
+        connection = True
+    except Exception as e:
+        connection = False
+    return connection
 
-#     if Keyboard.getkey("a"): left_right = -10
-#     if Keyboard.getkey("d"): left_right = 10
-#     if Keyboard.getkey("w"): front_back = 10
-#     if Keyboard.getkey("s"): front_back = -10
+if __name__ == '__main__':
+    drone_state = False
+    fall_detector = FallDetector()
+    drone = tello.Tello()
+    
+    if drone_state == False:                #연결 시 dronse_state = True로 
+        drone_state = drone_connect(drone)
 
-#     if Keyboard.getkey("k"): up_down = 10
-#     if Keyboard.getkey("l"): up_down = -10
-#     if Keyboard.getkey("i"): clock_counter = -10
-#     if Keyboard.getkey("o"): clock_counter = 10
+    drone_vid = drone.streamon()
+    keyboard_controller = kc.TelloKeyboardController(drone)
+    fall_detector.begin(drone_vid)
+    key = cv2.waitKey(1)
+    threading.Thread(target=tello_control, args=(key, keyboard_controller)).start()
 
-#     if Keyboard.getkey("UP"): drone.takeoff()
-#     if Keyboard.getkey("DOWN"): drone.land()
 
-#     return [left_right, front_back, up_down , clock_counter]
-in_flight = False
-fall_detector = FallDetector()
 
-drone = tello.Tello()
-drone.connect()
-print(drone.get_battery())
-
-drone.streamon()
-keyboard_controller = kc.TelloKeyboardController(drone)
-
-while 1:
-    drone_img = drone.get_frame_read().frame
-
-    result_img1 = ditel.dino(drone_img)
-    fall_detector.begin(drone)
-
-    cv2.imshow("result_img1",result_img1)
+#while 1:
+    # if drone.stream_on:
+    #     drone_img1 = drone.get_frame_read().frame
+    #     #drone_img2 = drone_img1
+    #     result_img1 = ditel.dino(drone_img1)
+    #     #result_img2 = fall_detector.begin(drone_img2)
+    #     cv2.imshow("knife",result_img1)
+    #     #cv2.imshow("fall",result_img2)
+    # else:
+    #     quit()
 
     #드론 조종하는 코드
-    # results = getInput()
-    # if results != [0,0,0,0]:
-    #     drone.send_rc_control(results[0],results[1],results[2],results[3])
-    
-    key = cv2.waitKey(1)
-    if key == 27: # esc
-        drone.streamoff()
-        drone.land()
-        drone.end()
-        quit()
-    elif key == 32:  # Space
-            if not in_flight:
-                # Take-off drone
-                drone.takeoff()
-                in_flight = True
-
-            elif in_flight:
-                # Land tello 
-                drone.land()
-                in_flight = False
-    elif key == 112: #p
-        drone.send_rc_control(0, 0, 0, 0)
-        
-    threading.Thread(target=tello_control, args=(key, keyboard_controller)).start()
+    # key = cv2.waitKey(1)
+    # threading.Thread(target=tello_control, args=(key, keyboard_controller)).start()
