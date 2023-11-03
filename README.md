@@ -1,60 +1,53 @@
-<h1> DCTV : Drone + CCTV with grounding dino and openpifpaf </h1> <img src="https://img.shields.io/badge/Python-3776AB?style=flat&logo=TypeScript&logoColor=white"/>
+# HumanFallDetection
+We augment human pose estimation
+(openpifpaf library) by support for multi-camera and multi-person tracking and a long short-term memory (LSTM)
+neural network to predict two classes: “Fall” or “No Fall”. From the poses, we extract five temporal and spatial
+features which are processed by an LSTM classifier.
+<p align="center">
+<img src="examples/fall.gif" width="420" />
+</p>
 
-최근, 다양한 사건 사고들이 발생하고 있습니다.
-그 중에서, 최근 제일 이슈가 되었던 것은 여러 곳에서 발생하는 무차별 흉기난동(칼부림) 범죄였습니다.
-흉기를 들고 길을 배회하거나 누군가에게 보복을 하기위해 흉기를 이용해 범죄를 저지르는 등 경찰관 분들이 실시간으로 상황을 파악하기 어려운 사건이 발생하였습니다.
+## Setup
 
-또한 현재의 CCTV는 고정된 자리에서 움직이지 못하여 특정 장소는 볼 수 없는 단점이 존재하며 최근 '부산 돌려차기' 사건에서도 가해자가 피해자의 머리를 돌려차기로 쓰러트리고 
-정신을 잃은 피해자를 업고 CCTV 사각지대로 이동하여 그 이후의 정황에 대해 자세하게 알 수 없는 일이 생겼습니다.
-이렇듯 이동하지 못하는 CCTV의 단점을 추후 드론의 규제가 풀리고 경찰청과 연계를 한다면 평상시에는 CCTV로 작종하다가 추적 등 움직임이 필요한 특정 상황에 드론을 작동시켜
-컨트롤 타워에서 직접 조종을 통해 실시간으로 범죄가 벌어지는 현장에 좀 더 가까이 접근하여 정확한 상황을 파악할 수 있게 하고 
-이와 동시에 범죄를 저지르는 사람에게도 경찰에서 이미 상황을 파악했다는 것을 의식하게 하고 
-그 거리를 지나다니는 사람들도 드론 소리 또는 드론의 위치를 통해 상황이 발생한 것을 빠르게 전달할 수 있을 것입니다.
+```shell script
+pip install -r requirements.txt
+```
 
-![10대 칼부림](https://github.com/ST-Sinu/DCTV/assets/100664052/7ddebef7-1e47-4013-be03-a33fef38efd1)
-![20대 흉기배회](https://github.com/ST-Sinu/DCTV/assets/100664052/5bb19c18-4a8d-4ea5-b501-f1b4e9a2efa3)
-![60대 흉기난동](https://github.com/ST-Sinu/DCTV/assets/100664052/7030e80e-018a-476a-bc79-cf298d124396)
+## Usage
+```shell script
+python3 fall_detector.py
+```
+<TABLE>
+<TR><TH style="width:120px">Argument</TH><TH style="width:300px">Description</TH><TH>Default</TH></TR>
+<TR><TD>num_cams</TD> <TD>Number of Cameras/Videos to process</TD><TD>1</TD></TR>
+<TR><TD>video</TD><TD>Path to the video file (None to capture live video from camera(s)) <br>For single video fall
+                        detection(--num_cams=1), save your videos as abc.xyz
+                        and set --video=abc.xyz<br> For 2 video fall
+                        detection(--num_cams=2), save your videos as abc1.xyz
+                        & abc2.xyz & set --video=abc.xyz</TD><TD>None</TD></TR>
+<TR><TD>save_output</TD> <TD>Save the result in a video file. Output videos are
+                        saved in the same directory as input videos with "out"
+                        appended at the start of the title</TD><TD>False</TD></TR>
+<TR><TD>disable_cuda</TD> <TD>To process frames on CPU by disabling CUDA support on GPU</TD><TD>False</TD></TR>
+</TABLE>
 
-프로젝트에서는 Grounding Dino를 드론에 연동시켜 흉기(칼)을 검출할 수 있도록 하였습니다.
-(드론이 칼을 검출하는 사진 추가)
-또한 여기서 멈추지 않고 흉기로 인식을 하였을때 컨트롤 타워에 알람이 가는 기능을 추가하였습니다
-추후 드론에 (드론에서 발생하는 소리만 상쇄하여 정상적으로 상황 소리를 들을 수 있는)마이크와 소형 스피커를 추가하여
-실시간으로 112 상황실이나 출동중인 경찰관이 상황을 컨트롤 할 수 있도록 할 예정입니다.
-
-또한 길에서 쓰러진 채로 응급처치를 받지 못하는 상황이나 술에 취해 자신의 몸을 가누지 못하고 어두운 상황에서 차에 치일 수 있는 상황을 방지할 수 있도록
-DCTV가 사람이 쓰러진 후 10초가 지나도 일어나지 않는 상황을 인식하여 컨트롤 타워에 알람을 보내면 컨트롤 타워에서 직접 조종하여 DCTV를 일어나지 않는 사람 가까이 이동시켜
-자세한 상황을 파악하고 만약 도로에서 사람이 쓰러져 있다면 바닥에 사람이 쓰러져 있는 것을 파악하기 어려운 운전자들이 드론의 위치를 확인하여
-사람이 차에 깔리는 상황을 방지할 수 있도록 하고 그 사이에 상황을 전달받은 경찰관이 현장에 도착하여 해결할 수 있도록 하였습니다.
-또한 술에 취한 사람이 쓰러져 있더라도 도움이 필요없다고 인도를 거부하는 사람들을 위해 경찰관 분들이 끝까지 옆에서 기다리는 상황보다는 드론을 통해
-쓰러진 상황을 주변 사람들에게 인식하게 하는 방법을 이용하여 경찰관의 인력을 좀 더 효율적으로 사용할 수 있게 도움을 주고자 하였습니다.
-
-이를 위해 프로젝트에서는 openpifpaf 모듈을 이용하여 사람이 쓰러지는 것을 파악할 수 있게 설계하였고고 초당 프레임 수를 계산하여 쓰러짐이 인식된 후 10초가 지나면
-컨트롤 타워에 알람이 갈 수 있도록 설계하였습니다.
-
-![새벽 도로에 누워있던 30대](https://github.com/ST-Sinu/DCTV/assets/100664052/565f6395-b63d-4baa-88f7-146664960ec5)
-![술 취해 쓰러진 50대](https://github.com/ST-Sinu/DCTV/assets/100664052/0614e2f1-d79d-4286-a36d-c507e8f9ac08)
-
-<h2>상황가정1 : 흉기를 들고 배회하는 사람</h2> 
-
-<h2>상황가정2 : 길에 쓰러져 있는 사람</h2>
+## Dataset
+We used the [UP-Fall Detection](https://sites.google.com/up.edu.mx/har-up/) to train the LSTM model. You can use [this](https://colab.research.google.com/drive/1PbzVZnwBzFK_CcMf5G3dFrjwKZgfK3Vy?usp=sharing) Colab notebook to download the download the dataset and compile the files into videos.
 
 
-<h2>Grounding-Dino</h2>
-Knife Detecting을 하기 위해 Grounding-Dino 모듈을 사용합니다
+## Citation
+Please cite the following paper in your publications if our work has helped your research: <br> [Multi-camera, multi-person, and real-time fall detection using long short term memory](https://doi.org/10.1117/12.2580700)
 
-<h2>openpifpaf</h2>
-Fall-Detecting을 하기 위해 openpifpaf 라이브러리와 LSTM(Long Short-Memory) 모델을 사용합니다.
-
-
-
-
-
-
-
-
-
-
-
-Recently, there have been several incidents continuously occurring.
-First, we use Grounding Dino to detecting knife.
-
+                  
+    @inproceedings{Taufeeque2021MulticameraMA,
+                    author = {Mohammad Taufeeque and Samad Koita and Nicolai Spicher and Thomas M. Deserno},
+                    title = {{Multi-camera, multi-person, and real-time fall detection using long short term memory}},
+                    volume = {11601},
+                    booktitle = {Medical Imaging 2021: Imaging Informatics for Healthcare, Research, and Applications},
+                    organization = {International Society for Optics and Photonics},
+                    publisher = {SPIE},
+                    pages = {35 -- 42},
+                    year = {2021},
+                    doi = {10.1117/12.2580700},
+                    URL = {https://doi.org/10.1117/12.2580700}
+                  }
