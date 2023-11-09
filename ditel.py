@@ -31,7 +31,7 @@ def inference(img, prompt, box_threshold=0.35, text_threshold=0.25):
     annotated_frame = annotate(image_source=img, boxes=boxes, logits=logits, phrases=phrases)
 
     for index in range(len(phrases)):
-        if 'a knife' in phrases[index] and int(logits[index] >= 0.5) :
+        if 'a knife' in phrases[index] and int(logits[index] >= 0.3) :
             sd.Beep(1000, 500)  # 1000Hz 소리를 0.5초 동안 재생
 
 
